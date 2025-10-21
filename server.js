@@ -3,6 +3,9 @@ const express = require("express");
 const cors = require("cors");
 const authRoutes = require("./src/routes/authRoutes");
 const tasksRoutes = require("./src/routes/tasksRoutes");
+const employeeRoutes = require("./src/routes/employeeRoutes");
+const eventsRoutes = require("./src/routes/eventsRoutes");
+const materialRoutes = require("./src/routes/materialRoutes");
 
 // Inicializar Express
 const app = express();
@@ -13,6 +16,9 @@ app.use(express.json()); // Habilita el parseo de JSON en las peticiones
 
 // Rutas públicas (sin autenticación)
 app.use("/api/auth", authRoutes);
+app.use("/api/employee", employeeRoutes);
+app.use("/api/events", eventsRoutes);
+app.use("/api/materials", materialRoutes);
 
 // Rutas protegidas (requieren token JWT)
 app.use("/api/tasks", require("./src/middlewares/authMiddleware"), tasksRoutes);

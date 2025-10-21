@@ -6,10 +6,11 @@ const authController = {
   // Login
   login: async (req, res) => {
     try {
-      const { email, contraseña} = req.body;
+      const { email, contraseña } = req.body;
       console.log("email recibida:", email); // 👈 Nuevo
       console.log("Contraseña recibida:", contraseña); // 👈 Nuevo
       const user = await User.findByEmail(email);
+      console.log("Usuario encontrado:", user); // 👈 Nuevo
 
       if (!user) {
         return res.status(401).json({ error: "Usuario no encontrado" });
@@ -28,7 +29,14 @@ const authController = {
       //   { expiresIn: "1h" }
       // );
 
-      res.json({ user: { dni: user.dni, contadorHoras: user.contadorHoras, estado: user.estado, salario: user.salario} });
+      res.json({
+        user: {
+          dni: user.dni,
+          contadorHoras: user.contadorHoras,
+          estado: user.estado,
+          salario: user.salario,
+        },
+      });
     } catch (error) {
       res.status(500).json({ error: "Error en el servidor" });
     }
