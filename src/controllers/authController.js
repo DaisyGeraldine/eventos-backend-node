@@ -6,39 +6,56 @@ const authController = {
   // Login
   login: async (req, res) => {
     try {
-      const { email, contraseña } = req.body;
-      console.log("email recibida:", email); // 👈 Nuevo
-      console.log("Contraseña recibida:", contraseña); // 👈 Nuevo
+      const { email, password } = req.body;
+
+      // Validar que se envíen los datos requeridos
+      if (!email || !password) {
+        return res.status(400).json({
+          status: false,
+          message: "Email y contraseña son requeridos",
+        });
+      }
+
       const user = await User.findByEmail(email);
-      console.log("Usuario encontrado:", user); // 👈 Nuevo
 
       if (!user) {
-        return res.status(401).json({ error: "Usuario no encontrado" });
+        return res.status(401).json({
+          status: false,
+          message: "Credenciales incorrectas",
+        });
       }
 
-      // Verificar contraseña
-      const validPassword = await bcrypt.compare(contraseña, user.contraseña);
+      // Verificar contraseña hasheada
+      const validPassword = await bcrypt.compare(password, user.contrasena);
       if (!validPassword) {
-        return res.status(401).json({ error: "Contraseña incorrecta" });
+        return res.status(401).json({
+          status: false,
+          message: "Credenciales incorrectas",
+        });
       }
+
+      // Remover la contraseña de la respuesta por seguridad
+      const { contrasena, ...userWithoutPassword } = user;
 
       // Generar token JWT (válido por 1 hora)
       // const token = jwt.sign(
-      //   { id: user.id, email: user.email },
+      //   { id: user.dni, email: user.email },
       //   process.env.JWT_SECRET,
       //   { expiresIn: "1h" }
       // );
 
-      res.json({
-        user: {
-          dni: user.dni,
-          contadorHoras: user.contadorHoras,
-          estado: user.estado,
-          salario: user.salario,
-        },
+      res.status(200).json({
+        status: true,
+        message: "Inicio de sesión exitoso",
+        data: userWithoutPassword,
+        // token, // Descomenta cuando implementes JWT
       });
     } catch (error) {
-      res.status(500).json({ error: "Error en el servidor" });
+      console.error("Error en login:", error);
+      res.status(500).json({
+        status: false,
+        message: "Error interno del servidor",
+      });
     }
   },
 

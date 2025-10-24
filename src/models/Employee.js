@@ -10,23 +10,43 @@ const Employee = {
     return rows[0];
   },
 
+  // findAll: async () => {
+  //   const [rows] = await pool.query(`SELECT
+  //       e.dni,
+  //       e.nombre,
+  //       e.apellidos,
+  //       e.numSS,
+  //       e.categoria,
+  //       e.email AS email_empleado,
+  //       ep.salario,
+  //       ep.contadorHoras,
+  //       ep.estado,
+  //       ep.email AS email_propio,
+  //       ep.contraseña
+  //     FROM Empleado e
+  //     JOIN EmpleadoPropio ep ON e.dni = ep.dni;`);
+  //   return rows;
+  // },
+
   findAll: async () => {
     const [rows] = await pool.query(`SELECT
-        e.dni,
-        e.nombre,
-        e.apellidos,
+        p.dni,
+        p.nombre,
+        p.apellidos,
+        p.direccion,
         e.numSS,
-        e.categoria,
-        e.email AS email_empleado,
-        ep.salario,
-        ep.contadorHoras,
-        ep.estado,
-        ep.email AS email_propio,
-        ep.contraseña
+        e.categoriaPersona,
+        e.contratosHoras,
+        e.fechaAlta,
+        e.estado,
+        e.email,
+        e.contraseña,
+        e.telefono
       FROM Empleado e
-      JOIN EmpleadoPropio ep ON e.dni = ep.dni;`);
+      JOIN Persona p ON e.dni = p.dni`);
     return rows;
   },
+
   findByDni: async (dni) => {
     const query = `SELECT
         e.dni,

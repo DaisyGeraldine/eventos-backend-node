@@ -4,7 +4,8 @@ const User = {
   // Buscar usuario por email
   findByEmail: async (email) => {
     const [rows] = await pool.query(
-      "SELECT * FROM EmpleadoPropio WHERE email = ?",
+      `SELECT * FROM Empleado e
+      JOIN Persona p ON e.dni = p.dni WHERE e.email = ?`,
       [email]
     );
     return rows[0];
