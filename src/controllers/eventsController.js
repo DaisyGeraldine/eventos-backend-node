@@ -6,13 +6,17 @@ const eventsController = {
   getAllEvents: async (req, res) => {
     try {
       const events = await Event.findAll();
-      res.json({
+      res.status(200).json({
         status: true,
+        message: "Eventos obtenidos exitosamente",
         data: events,
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({
+        status: false,
+        message: "Error interno del servidor",
+      });
     }
   },
 
