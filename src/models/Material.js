@@ -1,46 +1,32 @@
 const pool = require("../config/db");
 
 const Material = {
-  findAllMaterial: async () => {
-    const [rows] = await pool.query(
-      `SELECT 
-            m.cod,
-            m.descripcion,
-            m.precio,
-            m.fechaAmortizacion,
-            e.estado AS estado
-        FROM 
-            MaterialPropio m
-        JOIN 
-            EstadoMaterial e ON m.estado = e.cod`
-    );
+  findAvailableInventoryMaterial: async () => {
+    const [rows] = await pool.query(`
+      SELECT 
+        m.cod,
+        m.descripcion,
+        mi.estado
+      FROM Material m
+      JOIN MaterialEnInventario mi ON m.cod = mi.cod
+      WHERE mi.estado = 'disponible'
+    `);
+
     return rows;
   },
 
-  createRental: async (materialRental) => {
-    const [result] = await pool.query(
-      "INSERT INTO MaterialEnAlquiler (descripcion , cantidad , precio, estado) VALUES (?, ?, ?, ?)",
-      [
-        materialRental.descripcion,
-        materialRental.cantidad,
-        materialRental.precio,
-        materialRental.estado,
-      ]
-    );
-    return { id: result.insertId, ...materialRental };
-  },
+  findAvailableRentalMaterial: async () => {
+    const [rows] = await pool.query(`
+      SELECT 
+        m.cod,
+        m.descripcion,
+        ml.precio,
+        ml.empresaProveedora
+      FROM Material m
+      JOIN MaterialEnAlquiler ml ON m.cod = ml.cod
+    `);
 
-  createMaterialEvent: async (materialEvent) => {
-    const [result] = await pool.query(
-      "INSERT INTO MaterialEnEvento (nombre , descripcion, precio, codEvento) VALUES (?, ?, ?, ?)",
-      [
-        materialEvent.nombre,
-        materialEvent.descripcion,
-        materialEvent.precio,
-        materialEvent.codEvento,
-      ]
-    );
-    return { id: result.insertId, ...materialEvent };
+    return rows;
   },
 };
 

@@ -10,24 +10,6 @@ const Employee = {
     return rows[0];
   },
 
-  // findAll: async () => {
-  //   const [rows] = await pool.query(`SELECT
-  //       e.dni,
-  //       e.nombre,
-  //       e.apellidos,
-  //       e.numSS,
-  //       e.categoria,
-  //       e.email AS email_empleado,
-  //       ep.salario,
-  //       ep.contadorHoras,
-  //       ep.estado,
-  //       ep.email AS email_propio,
-  //       ep.contraseña
-  //     FROM Empleado e
-  //     JOIN EmpleadoPropio ep ON e.dni = ep.dni;`);
-  //   return rows;
-  // },
-
   findAll: async () => {
     const [rows] = await pool.query(`SELECT
         p.dni,

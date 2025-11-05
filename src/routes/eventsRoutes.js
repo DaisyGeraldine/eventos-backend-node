@@ -5,5 +5,6 @@ const eventsController = require("../controllers/eventsController");
 router.get("/", eventsController.getAllEvents);
 router.post("/employee", eventsController.getEventByDni);
 router.get("/requestEvents", eventsController.getAllEventRequest);
+router.post("/prepare", eventsController.prepareEvent);
 
 module.exports = router;

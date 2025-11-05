@@ -17,7 +17,8 @@ const Event = {
         e.m2,
         e.anotaciones,
         p.nombre AS nombreUsuario,
-        CASE 
+        CASE
+          WHEN e.fechaFin < CURDATE() THEN 'Finalizado'
           WHEN ej.codEvento IS NOT NULL THEN 'En ejecución'
           WHEN pe.codEvento IS NOT NULL THEN 'En preparación'
           ELSE 'Pendiente'
@@ -43,6 +44,82 @@ const Event = {
       return null;
     }
     return rows;
+  },
+
+  /** NEW: PREPARE EVENT */
+  prepareEvent: async ({
+    eventCode,
+    staffInternal = [],
+    staffExternal = [],
+    materialsInventory = [],
+    materialsRental = [],
+  }) => {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // Insert preparation event row
+      await conn.query(
+        `
+        INSERT INTO PreparacionDeEvento (codEvento, validado)
+        VALUES (?, false)
+        ON DUPLICATE KEY UPDATE codEvento = codEvento
+      `,
+        [eventCode]
+      );
+
+      // Internal staff
+      for (let dni of staffInternal) {
+        await conn.query(
+          `
+          INSERT INTO EmpleadoEventoPreparado (dni, codEvento)
+          VALUES (?, ?)
+        `,
+          [dni, eventCode]
+        );
+      }
+
+      // External staff
+      for (let dni of staffExternal) {
+        await conn.query(
+          `
+          INSERT INTO PersonalExternoEnEventoPreparado (dni, codEvento)
+          VALUES (?, ?)
+        `,
+          [dni, eventCode]
+        );
+      }
+
+      // Inventory material
+      for (let cod of materialsInventory) {
+        await conn.query(
+          `
+          INSERT INTO MaterialInventarioEventoPreparado (codMaterial, codEvento)
+          VALUES (?, ?)
+        `,
+          [cod, eventCode]
+        );
+      }
+
+      // Rental material
+      for (let cod of materialsRental) {
+        await conn.query(
+          `
+          INSERT INTO MaterialEnAlquilerEventoPreparado (codMaterial, codEvento)
+          VALUES (?, ?)
+        `,
+          [cod, eventCode]
+        );
+      }
+
+      await conn.commit();
+      return { status: true };
+    } catch (error) {
+      await conn.rollback();
+      throw error;
+    } finally {
+      conn.release();
+    }
   },
 };
 

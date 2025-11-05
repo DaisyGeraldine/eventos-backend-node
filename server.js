@@ -6,6 +6,7 @@ const tasksRoutes = require("./src/routes/tasksRoutes");
 const employeeRoutes = require("./src/routes/employeeRoutes");
 const eventsRoutes = require("./src/routes/eventsRoutes");
 const materialRoutes = require("./src/routes/materialRoutes");
+const staffRoutes = require("./src/routes/staffRoutes");
 
 // Inicializar Express
 const app = express();
@@ -19,6 +20,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/employee", employeeRoutes);
 app.use("/api/events", eventsRoutes);
 app.use("/api/materials", materialRoutes);
+app.use("/api/staff", staffRoutes);
 
 // Rutas protegidas (requieren token JWT)
 app.use("/api/tasks", require("./src/middlewares/authMiddleware"), tasksRoutes);
