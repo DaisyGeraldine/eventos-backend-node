@@ -49,6 +49,10 @@ const Event = {
   /** NEW: PREPARE EVENT */
   prepareEvent: async ({
     eventCode,
+    fechaIni,
+    fechaFin,
+    horaPrevistaInicio,
+    presupuesto = 0,
     staffInternal = [],
     staffExternal = [],
     materialsInventory = [],
@@ -57,70 +61,166 @@ const Event = {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
+      const fechaIniFormatted = formatDate(fechaIni);
+      const fechaFinFormatted = formatDate(fechaFin);
+      const horaPrevistaInicioFormatted = formatDate(horaPrevistaInicio);
 
-      // Insert preparation event row
+      // 1️⃣ Insertar en PreparacionDeEvento
       await conn.query(
         `
-        INSERT INTO PreparacionDeEvento (codEvento, validado)
-        VALUES (?, false)
-        ON DUPLICATE KEY UPDATE codEvento = codEvento
-      `,
-        [eventCode]
+        INSERT INTO PreparacionDeEvento (
+          fechaIni,
+          fechaFin,
+          horaPrevistaInicio,
+          codEvento,
+          presupuesto,
+          validado
+        )
+        VALUES (?, ?, ?, ?, ?, false)
+        ON DUPLICATE KEY UPDATE
+          fechaIni = VALUES(fechaIni),
+          fechaFin = VALUES(fechaFin),
+          horaPrevistaInicio = VALUES(horaPrevistaInicio),
+          presupuesto = VALUES(presupuesto);
+        `,
+        [fechaIniFormatted, fechaFinFormatted, horaPrevistaInicioFormatted, eventCode, presupuesto]
       );
 
-      // Internal staff
-      for (let dni of staffInternal) {
+      // 2️⃣ Personal interno
+      for (const staff of staffInternal) {
+        const { dni, fechaIni, fechaFin } = staff;
         await conn.query(
           `
-          INSERT INTO EmpleadoEventoPreparado (dni, codEvento)
-          VALUES (?, ?)
-        `,
-          [dni, eventCode]
+          INSERT INTO EmpleadoEventoPreparado (
+            dni,
+            codEvento,
+            fechaIni,
+            fechaFin
+          )
+          VALUES (?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            fechaIni = VALUES(fechaIni),
+            fechaFin = VALUES(fechaFin);
+          `,
+          [dni, eventCode, fechaIniFormatted, fechaFinFormatted]
         );
       }
 
-      // External staff
-      for (let dni of staffExternal) {
+      // 3️⃣ Personal externo
+      for (const staff of staffExternal) {
+        const { dni, precio, fechaIni, fechaFin } = staff;
         await conn.query(
           `
-          INSERT INTO PersonalExternoEnEventoPreparado (dni, codEvento)
-          VALUES (?, ?)
-        `,
-          [dni, eventCode]
+          INSERT INTO PersonalExternoEnEventoPreparado (
+            dni,
+            codEvento,
+            precio,
+            fechaIni,
+            fechaFin
+          )
+          VALUES (?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            precio = VALUES(precio),
+            fechaIni = VALUES(fechaIni),
+            fechaFin = VALUES(fechaFin);
+          `,
+          [dni, eventCode, precio ?? 0, fechaIniFormatted, fechaFinFormatted]
         );
       }
 
-      // Inventory material
-      for (let cod of materialsInventory) {
+      // 4️⃣ Material inventario
+      for (const mat of materialsInventory) {
+        const { codMaterial, precio, fechaIni, fechaFin } = mat;
         await conn.query(
           `
-          INSERT INTO MaterialInventarioEventoPreparado (codMaterial, codEvento)
-          VALUES (?, ?)
-        `,
-          [cod, eventCode]
+          INSERT INTO MaterialInventarioEventoPreparado (
+            codMaterial,
+            codEvento,
+            precio,
+            fechaIni,
+            fechaFin
+          )
+          VALUES (?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            precio = VALUES(precio),
+            fechaIni = VALUES(fechaIni),
+            fechaFin = VALUES(fechaFin);
+          `,
+          [codMaterial, eventCode, precio ?? 0, fechaIniFormatted, fechaFinFormatted]
         );
       }
 
-      // Rental material
-      for (let cod of materialsRental) {
+      // 5️⃣ Material en alquiler
+      for (const mat of materialsRental) {
+        const { codMaterial, precio, fechaIni, fechaFin } = mat;
         await conn.query(
           `
-          INSERT INTO MaterialEnAlquilerEventoPreparado (codMaterial, codEvento)
-          VALUES (?, ?)
-        `,
-          [cod, eventCode]
+          INSERT INTO MaterialEnAlquilerEventoPreparado (
+            codMaterial,
+            codEvento,
+            precio,
+            fechaIni,
+            fechaFin
+          )
+          VALUES (?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            precio = VALUES(precio),
+            fechaIni = VALUES(fechaIni),
+            fechaFin = VALUES(fechaFin);
+          `,
+          [codMaterial, eventCode, precio ?? 0, fechaIniFormatted, fechaFinFormatted]
         );
       }
 
       await conn.commit();
-      return { status: true };
+      return { status: true, message: "Event prepared successfully" };
     } catch (error) {
       await conn.rollback();
-      throw error;
+      console.error("Error preparing event:", error);
+      return { status: false, message: error.message };
     } finally {
       conn.release();
     }
   },
+
+  updateEventStatus: async () => {
+    // 1. Buscar eventos en preparación que deban empezar hoy
+    const [rows] = await pool.query(`
+      SELECT pe.codEvento 
+      FROM PreparacionDeEvento pe
+      INNER JOIN Evento e ON pe.codEvento = e.cod
+      WHERE pe.validado = false 
+      AND DATE(e.fechaIni) <= CURDATE();
+    `);
+
+    // 2. Para cada uno, cambiar a validado = true y crear EjecucionEvento
+    for (const row of rows) {
+      await pool.query(`
+        UPDATE PreparacionDeEvento
+        SET validado = true
+        WHERE codEvento = ?;
+      `, [row.codEvento]);
+
+      await pool.query(`
+        INSERT IGNORE INTO EjecucionEvento (codEvento, fechaInicioReal)
+        VALUES (?, NOW());
+      `, [row.codEvento]);
+    }
+
+    return { updated: rows.length };
+  },  
 };
+
+// 🔧 Función para formatear fechas al formato que MySQL entiende (YYYY-MM-DD HH:MM:SS)
+function formatDate(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
 
 module.exports = Event;
