@@ -184,30 +184,39 @@ const Event = {
   },
 
   updateEventStatus: async () => {
-    // 1. Buscar eventos en preparación que deban empezar hoy
-    const [rows] = await pool.query(`
-      SELECT pe.codEvento 
-      FROM PreparacionDeEvento pe
-      INNER JOIN Evento e ON pe.codEvento = e.cod
-      WHERE pe.validado = false 
-      AND DATE(e.fechaIni) <= CURDATE();
-    `);
+    try {
+      console.log("[CRON] Iniciando verificación de eventos...");
 
-    // 2. Para cada uno, cambiar a validado = true y crear EjecucionEvento
-    for (const row of rows) {
-      await pool.query(`
-        UPDATE PreparacionDeEvento
-        SET validado = true
-        WHERE codEvento = ?;
-      `, [row.codEvento]);
+      const [rows] = await pool.query(`
+        SELECT pe.codEvento 
+        FROM PreparacionDeEvento pe
+        INNER JOIN Evento e ON pe.codEvento = e.cod
+        WHERE pe.validado = false 
+        AND DATE(e.fechaIni) <= CURDATE();
+      `);
 
-      await pool.query(`
-        INSERT IGNORE INTO EjecucionEvento (codEvento, fechaInicioReal)
-        VALUES (?, NOW());
-      `, [row.codEvento]);
+      console.log(`[CRON] Eventos encontrados: ${rows.length}`);
+
+      for (const row of rows) {
+        console.log(`[CRON] Actualizando evento: ${row.codEvento}`);
+
+        await pool.query(`
+          UPDATE PreparacionDeEvento
+          SET validado = true
+          WHERE codEvento = ?;
+        `, [row.codEvento]);
+
+        await pool.query(`
+          INSERT IGNORE INTO EjecucionEvento (codEvento, fechaIni)
+          VALUES (?, NOW());
+        `, [row.codEvento]);
+      }
+
+      console.log(`[CRON] Eventos procesados: ${rows.length}`);
+      return { updated: rows.length };
+    } catch (error) {
+      console.error("[CRON ERROR]", error);
     }
-
-    return { updated: rows.length };
   },  
 };
 

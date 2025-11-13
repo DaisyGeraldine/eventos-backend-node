@@ -9,6 +9,7 @@ const eventsRoutes = require("./src/routes/eventsRoutes");
 const materialRoutes = require("./src/routes/materialRoutes");
 const staffRoutes = require("./src/routes/staffRoutes");
 const cron = require("node-cron");
+const Event = require("./src/models/Event");
 
 // Inicializar Express
 const app = express();
@@ -47,5 +48,5 @@ app.listen(PORT, () => {
 // Ejecutar todos los días a medianoche
 cron.schedule("* * * * *", async () => {
   console.log(`[CRON TEST] Ejecutado a ${new Date().toLocaleString()}`);
-  await updateEventStatus();
+  await Event.updateEventStatus();
 });
