@@ -17,6 +17,9 @@ const Event = {
         e.m2,
         e.anotaciones,
         p.nombre AS nombreUsuario,
+        pe.horaPrevistaInicio,
+        pe.presupuesto,
+        ej.presupuestoModificado,
         CASE
           WHEN e.fechaFin < CURDATE() THEN 'Finalizado'
           WHEN ej.codEvento IS NOT NULL THEN 'En ejecución'

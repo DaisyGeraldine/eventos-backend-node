@@ -28,6 +28,89 @@ const Material = {
 
     return rows;
   },
+
+  findAllMaterials: async () => {
+    const [rows] = await pool.query(`
+      SELECT * FROM Material
+    `);
+    return rows;
+  },
+
+  createMaterial: async (cod, descripcion, fechaIni, fechaFin, precio) => {
+    const [result] = await pool.query(
+      `INSERT INTO Material (cod, descripcion, fechaIni, fechaFin, precio) VALUES (?, ?, ?, ?, ?)`,
+      [cod, descripcion, fechaIni, fechaFin, precio]
+    );
+    return result.insertId;
+  },
+
+  updateMaterial: async (cod, descripcion, fechaIni, fechaFin, precio) => {
+    const [result] = await pool.query(
+      `UPDATE Material SET descripcion = ?, fechaIni = ?, fechaFin = ?, precio = ? WHERE cod = ?`,
+      [descripcion, fechaIni, fechaFin, precio, cod]
+    );
+    return result.affectedRows;
+
+  },
+
+  deleteMaterial: async (cod) => {
+    const [result] = await pool.query(
+      `DELETE FROM Material WHERE cod = ?`,
+      [cod]
+    );
+    return result.affectedRows;
+  },
+
+  findInventoryMaterials : async () => {
+    const [rows] = await pool.query(`
+      SELECT m.*,
+      mi.estado, mi.fechaFabricacion, mi.diasDisponibilidad FROM Material m 
+      INNER JOIN MaterialEnInventario mi ON m.cod = mi.cod
+    `);
+    return rows;
+  },
+
+  addInventoryMaterial: async (cod, estado, fechaFabricacion, diasDisponibilidad) => {
+    const [result] = await pool.query(
+      `INSERT INTO MaterialEnInventario (cod, estado, fechaFabricacion, diasDisponibilidad) VALUES (?, ?, ?, ?)`,
+      [cod, estado, fechaFabricacion, diasDisponibilidad]
+    );
+    return result.insertId;
+  },
+
+  updateInventoryMaterial: async (cod, estado) => {
+    const [result] = await pool.query(
+      `UPDATE MaterialEnInventario SET estado = ? WHERE cod = ?`,
+      [estado, cod]
+    );
+    if (result.affectedRows === 0) {
+        return null;
+    }
+    const [rows] = await pool.query(
+      `SELECT * FROM MaterialEnInventario WHERE cod = ?`,
+      [cod]
+    );
+    
+    return rows[0];
+  },
+
+  deleteInventoryMaterial: async (cod) => {
+    const [result] = await pool.query(
+      `DELETE FROM MaterialEnInventario WHERE cod = ?`,
+      [cod]
+    );
+    return result.affectedRows;
+  },
+
+  findMaterialWithInventory: async (cod) => {
+    const [rows] = await pool.query(`
+      SELECT m.*,
+      mi.estado, mi.fechaFabricacion, mi.diasDisponibilidad FROM Material m 
+      LEFT JOIN MaterialEnInventario mi ON m.cod = mi.cod
+      WHERE m.cod = ?
+    `, [cod]);
+    return rows[0];
+  },
 };
 
 module.exports = Material;
