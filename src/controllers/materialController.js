@@ -133,8 +133,8 @@ const materialController = {
   // POST /materials/inventory - Agregar material al inventario
   addInventoryMaterial: async (req, res) => {
     try {
-      const { codMaterial, cantidad } = req.body; 
-      const newInventoryMaterial = await Material.addInventoryMaterial(codMaterial, cantidad);
+      const { cod, estado, fechaFabricacion, diasDisponibilidad } = req.body;
+      const newInventoryMaterial = await Material.addInventoryMaterial(cod, estado, fechaFabricacion, diasDisponibilidad);
       res.status(201).json({
         status: true,
         message: "Material agregado al inventario exitosamente",

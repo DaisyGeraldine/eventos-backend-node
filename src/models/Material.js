@@ -41,7 +41,15 @@ const Material = {
       `INSERT INTO Material (cod, descripcion, fechaIni, fechaFin, precio) VALUES (?, ?, ?, ?, ?)`,
       [cod, descripcion, fechaIni, fechaFin, precio]
     );
-    return result.insertId;
+    
+    if (result.affectedRows === 0) {
+        return null;
+    }
+    const [rows] = await pool.query(
+      `SELECT * FROM Material WHERE cod = ?`,
+      [cod]
+    );
+    return rows[0];
   },
 
   updateMaterial: async (cod, descripcion, fechaIni, fechaFin, precio) => {
@@ -49,8 +57,16 @@ const Material = {
       `UPDATE Material SET descripcion = ?, fechaIni = ?, fechaFin = ?, precio = ? WHERE cod = ?`,
       [descripcion, fechaIni, fechaFin, precio, cod]
     );
-    return result.affectedRows;
 
+    if (result.affectedRows === 0) {
+        return null;
+    }
+    const [rows] = await pool.query(
+      `SELECT * FROM Material WHERE cod = ?`,
+      [cod]
+    );
+
+    return rows[0];
   },
 
   deleteMaterial: async (cod) => {
@@ -75,7 +91,15 @@ const Material = {
       `INSERT INTO MaterialEnInventario (cod, estado, fechaFabricacion, diasDisponibilidad) VALUES (?, ?, ?, ?)`,
       [cod, estado, fechaFabricacion, diasDisponibilidad]
     );
-    return result.insertId;
+
+    if (result.affectedRows === 0) {
+        return null;
+    }
+    const [rows] = await pool.query(
+      `SELECT * FROM MaterialEnInventario WHERE cod = ?`,
+      [cod]
+    );
+    return rows[0];
   },
 
   updateInventoryMaterial: async (cod, estado) => {
