@@ -141,6 +141,200 @@ const staffController = {
     }
   },
 
+  // POST /empleados/complete - Crear empleado completo (Persona + Empleado)
+  createCompleteEmployee: async (req, res) => {
+    try {
+      const {
+        dni,
+        nombre,
+        apellidos,
+        direccion,
+        numSS,
+        categoriaPersona,
+        contratosHoras,
+        fechaAlta,
+        estado,
+        email,
+        contrasena,
+        telefono,
+      } = req.body; 
+      if (!dni || !email || !contrasena) {
+        return res.status(400).json({
+          status: false,
+          message: "DNI, email y contraseña son obligatorios",
+        });
+      }
+      const newEmployee = await Staff.createCompleteEmployee(
+        dni,
+        nombre,
+        apellidos,
+        direccion,
+        numSS,
+        categoriaPersona,
+        contratosHoras,
+        fechaAlta,
+        estado,
+        email,
+        contrasena,
+        telefono
+      );
+
+      if (newEmployee === null) {
+        return res.status(409).json({
+          status: false,
+          message: "El DNI o email ya existe en la base de datos",
+        });
+      }
+
+      return res.status(201).json({
+        status: true,
+        message: "Empleado creado exitosamente",
+        data: newEmployee,
+      });
+    } catch (error) {
+      console.error("Error creating complete employee:", error);
+      return res.status(500).json({
+        status: false,
+        message: "Error interno del servidor",
+      });
+    }
+  },
+
+  // PUT /empleados/:dni/complete - Actualizar empleado completo
+  updateCompleteEmployee: async (req, res) => {
+    try {
+      const dni = req.params.dni;
+      const {
+        nombre,
+        apellidos,
+        direccion,
+        numSS,
+        categoriaPersona,
+        contratosHoras,
+        fechaAlta,
+        estado,
+        email,
+        contrasena,
+        telefono,
+      } = req.body;
+      const updatedEmployee = await Staff.updateCompleteEmployee(
+        dni,
+        nombre,
+        apellidos,
+        direccion,
+        numSS,
+        categoriaPersona,
+        contratosHoras,
+        fechaAlta,
+        estado,
+        email,
+        contrasena,
+        telefono
+      );
+
+      if (updatedEmployee === null) {
+        return res.status(404).json({
+          status: false,
+          message: "Empleado no encontrado",
+        });
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: "Empleado actualizado exitosamente",
+        data: updatedEmployee,
+      });
+    } catch (error) {
+      console.error("Error updating complete employee:", error);
+      return res.status(500).json({
+        status: false,
+        message: "Error interno del servidor",
+      });
+    }
+  },
+
+  // PUT /empleados/:dni/estado - Actualizar solo estado
+  updateEmployeeStatus: async (req, res) => {
+    try {
+      const dni = req.params.dni;
+      const { estado } = req.body;
+      const updatedStatus = await Staff.updateEmployeeStatus(dni, estado);
+      return res.status(200).json({
+        status: true,
+        message: "Estado del empleado actualizado exitosamente",
+        data: updatedStatus,
+      });
+    } catch (error) {
+      console.error("Error updating employee status:", error);
+      return res.status(500).json({
+        status: false,
+        message: "Error interno del servidor",
+      });
+    }
+  },
+
+  // DELETE /empleados/:dni/complete - Eliminar empleado completo
+  deleteCompleteEmployee: async (req, res) => {
+    try {
+      const dni = req.params.dni;
+      const deleteEmployee = await Staff.deleteCompleteEmployee(dni);
+      if (!deleteEmployee) {
+        return res.status(404).json({
+          status: false,
+          message: "Empleado no encontrado",
+        });
+      }
+      return res.status(200).json({
+        status: true,
+        message: "Empleado eliminado exitosamente",
+      });
+    } catch (error) {
+      console.error("Error deleting complete employee:", error);
+      return res.status(500).json({
+        status: false,
+        message: "Error interno del servidor",
+      });
+    }
+  },
+
+  // GET /empleados/categoria/:categoria - Empleados por categoría
+  getEmployeesByCategory: async (req, res) => {
+    try {
+      const categoria = req.params.categoria;
+      const employees = await Staff.findEmployeesByCategory(categoria);
+      return res.status(200).json({
+        status: true,
+        message: `Empleados de categoría ${categoria} obtenidos exitosamente`,
+        data: employees,
+      });
+    } catch (error) {
+      console.error("Error fetching employees by category:", error);
+      return res.status(500).json({
+        status: false,
+        message: "Error interno del servidor",
+      });
+    }
+  },
+
+  // GET /empleados/estado/:estado - Empleados por estado
+  getEmployeesByStatus: async (req, res) => {
+    try {
+      const estado = req.params.estado;
+      const employees = await Staff.findEmployeesByStatus(estado);
+      return res.status(200).json({
+        status: true,
+        message: `Empleados con estado ${estado} obtenidos exitosamente`,
+        data: employees,
+      });
+    } catch (error) {
+      console.error("Error fetching employees by status:", error);
+      return res.status(500).json({
+        status: false,
+        message: "Error interno del servidor",
+      });
+    }
+  },
+
 };
 
 module.exports = staffController;
