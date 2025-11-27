@@ -233,22 +233,31 @@ const Event = {
       // Empleados se actualizan y ejecutan
       const [employees] = await pool.query(`
         UPDATE Empleado e
-        JOIN EmpleadoEventoPreparado eep ON e.dni = eep.dni
-        JOIN PreparacionDeEvento pe ON eep.codEvento = pe.codEvento
-        JOIN Evento ev ON pe.codEvento = ev.cod
-        SET e.estado = 'enEvento'
-        WHERE ev.fechaIni <= NOW() AND e.estado = 'reservado';
+          JOIN EmpleadoEventoPreparado eep ON e.dni = eep.dni
+          JOIN PreparacionDeEvento pe ON eep.codEvento = pe.codEvento
+          JOIN Evento ev ON pe.codEvento = ev.cod
+          SET 
+            e.estado = 'enEvento',
+            e.contratosHoras = e.contratosHoras + ev.duracion
+          WHERE ev.fechaIni <= NOW()
+            AND e.estado = 'reservado';
       `);
       console.log(`[CRON] Empleados actualizados: ${employees.affectedRows}`);
 
       // Insertar en EmpleadoEventoEjecutado
       await pool.query(`
         INSERT INTO EmpleadoEventoEjecutado (dni, codEvento, fechaIni, fechaFin)
-        SELECT eep.dni, eep.codEvento, ev.fechaIni, ev.fechaFin
-        FROM EmpleadoEventoPreparado eep
-        JOIN PreparacionDeEvento pe ON eep.codEvento = pe.codEvento
-        JOIN Evento ev ON pe.codEvento = ev.cod
-        WHERE ev.fechaIni <= NOW();
+          SELECT eep.dni, eep.codEvento, ev.fechaIni, ev.fechaFin
+          FROM EmpleadoEventoPreparado eep
+          JOIN PreparacionDeEvento pe ON eep.codEvento = pe.codEvento
+          JOIN Evento ev ON pe.codEvento = ev.cod
+          WHERE ev.fechaIni <= NOW()
+            AND NOT EXISTS (
+              SELECT 1
+              FROM EmpleadoEventoEjecutado eee
+              WHERE eee.dni = eep.dni
+                AND eee.codEvento = eep.codEvento
+            );
       `);
 
 
@@ -265,12 +274,24 @@ const Event = {
 
       // Insertar en MaterialInventarioEventoEjecutado
       await pool.query(`
-        INSERT INTO MaterialInventarioEventoEjecutado (codMaterial, codEvento, precio, fechaIni, fechaFin)
-        SELECT miep.codMaterial, miep.codEvento, miep.precio, ev.fechaIni, ev.fechaFin
-        FROM MaterialInventarioEventoPreparado miep
-        JOIN PreparacionDeEvento pe ON miep.codEvento = pe.codEvento
-        JOIN Evento ev ON pe.codEvento = ev.cod
-        WHERE ev.fechaIni <= NOW();
+        INSERT INTO MaterialInventarioEventoEjecutado
+            (codMaterial, codEvento, precio, fechaIni, fechaFin)
+          SELECT
+            miep.codMaterial,
+            miep.codEvento,
+            miep.precio,
+            ev.fechaIni,
+            ev.fechaFin
+          FROM MaterialInventarioEventoPreparado miep
+          JOIN PreparacionDeEvento pe ON miep.codEvento = pe.codEvento
+          JOIN Evento ev ON pe.codEvento = ev.cod
+          WHERE ev.fechaIni <= NOW()
+            AND NOT EXISTS (
+              SELECT 1
+              FROM MaterialInventarioEventoEjecutado miee
+              WHERE miee.codMaterial = miep.codMaterial
+                AND miee.codEvento = miep.codEvento
+            );
       `);
       
       return { updated: events.length };
