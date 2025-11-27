@@ -33,4 +33,7 @@ router.get("/empleados/categoria/:categoria", staffController.getEmployeesByCate
 // GET /empleados/estado/:estado - Empleados por estado
 router.get("/empleados/estado/:estado", staffController.getEmployeesByStatus);
 
+// POST /empleados/:dni/eventos/proximos - Obtener eventos próximos para un empleado
+router.get("/empleados/:dni/eventos/proximos", staffController.getUpcomingEventsForEmployee);
+
 module.exports = router;

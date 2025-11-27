@@ -5,7 +5,7 @@ const Staff = {
   findAvailableStaff: async () => {
     const [rows] = await pool.query(`
       SELECT p.dni, p.nombre, p.apellidos, p.direccion,
-             e.numSS, e.categoriaPersona, e.contratosHoras, e.fechaAlta,
+             e.numSS, e.categoriaPersona AS category, e.contratosHoras, e.fechaAlta,
              e.estado, e.email, e.contrasena, e.telefono
       FROM Empleado e
       JOIN Persona p ON p.dni = e.dni
@@ -274,6 +274,21 @@ const Staff = {
       WHERE e.estado = ?
       ORDER BY p.apellidos, p.nombre
     `, [status]);
+    return rows;
+  },
+
+  findUpcomingEventsForEmployee: async (dni) => {
+    const [rows] = await pool.query(`
+      SELECT e.* FROM Evento e
+      INNER JOIN EmpleadoEventoPreparado ep ON e.cod = ep.codEvento
+      WHERE ep.dni = ? AND e.fechaIni >= CURDATE()
+      UNION
+      SELECT e.* FROM Evento e
+      INNER JOIN EmpleadoEventoEjecutado ee ON e.cod = ee.codEvento
+      WHERE ee.dni = ? AND e.fechaIni >= CURDATE()
+      ORDER BY fechaIni ASC
+      LIMIT 10;
+    `, [dni, dni]);
     return rows;
   }
 

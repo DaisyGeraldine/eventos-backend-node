@@ -107,6 +107,12 @@ const Event = {
           `,
           [dni, eventCode, fechaIniFormatted, fechaFinFormatted]
         );
+
+        // Marcar al empleado como reservado si está disponible
+        await conn.query(
+          `UPDATE Empleado SET estado = 'reservado' WHERE dni = ? AND estado = 'disponible'`,
+          [dni]
+        );
       }
 
       // 3️⃣ Personal externo
@@ -151,6 +157,13 @@ const Event = {
           `,
           [codMaterial, eventCode, precio ?? 0, fechaIniFormatted, fechaFinFormatted]
         );
+
+        // Marcar el material de inventario como reservado si estaba disponible
+        // Ajusta el nombre de la tabla/columna si en tu esquema difiere (ej. MaterialEnInventario.cod / Material.cod)
+        await conn.query(
+          `UPDATE MaterialEnInventario SET estado = 'reservado' WHERE cod = ? AND estado = 'disponible'`,
+          [codMaterial]
+        );
       }
 
       // 5️⃣ Material en alquiler
@@ -190,7 +203,8 @@ const Event = {
     try {
       console.log("[CRON] Iniciando verificación de eventos...");
 
-      const [rows] = await pool.query(`
+      // Eventos
+      const [events] = await pool.query(`
         SELECT pe.codEvento 
         FROM PreparacionDeEvento pe
         INNER JOIN Evento e ON pe.codEvento = e.cod
@@ -198,25 +212,68 @@ const Event = {
         AND DATE(e.fechaIni) <= CURDATE();
       `);
 
-      console.log(`[CRON] Eventos encontrados: ${rows.length}`);
+      console.log(`[CRON] Eventos encontrados: ${events.length}`);
 
-      for (const row of rows) {
-        console.log(`[CRON] Actualizando evento: ${row.codEvento}`);
+      for (const event of events) {
+        console.log(`[CRON] Actualizando evento: ${event.codEvento}`);
 
         await pool.query(`
           UPDATE PreparacionDeEvento
           SET validado = true
           WHERE codEvento = ?;
-        `, [row.codEvento]);
+        `, [event.codEvento]);
 
         await pool.query(`
           INSERT IGNORE INTO EjecucionEvento (codEvento, fechaIni)
           VALUES (?, NOW());
-        `, [row.codEvento]);
+        `, [event.codEvento]);
       }
+      console.log(`[CRON] Eventos procesados: ${events.length}`);
 
-      console.log(`[CRON] Eventos procesados: ${rows.length}`);
-      return { updated: rows.length };
+      // Empleados se actualizan y ejecutan
+      const [employees] = await pool.query(`
+        UPDATE Empleado e
+        JOIN EmpleadoEventoPreparado eep ON e.dni = eep.dni
+        JOIN PreparacionDeEvento pe ON eep.codEvento = pe.codEvento
+        JOIN Evento ev ON pe.codEvento = ev.cod
+        SET e.estado = 'enEvento'
+        WHERE ev.fechaIni <= NOW() AND e.estado = 'reservado';
+      `);
+      console.log(`[CRON] Empleados actualizados: ${employees.affectedRows}`);
+
+      // Insertar en EmpleadoEventoEjecutado
+      await pool.query(`
+        INSERT INTO EmpleadoEventoEjecutado (dni, codEvento, fechaIni, fechaFin)
+        SELECT eep.dni, eep.codEvento, ev.fechaIni, ev.fechaFin
+        FROM EmpleadoEventoPreparado eep
+        JOIN PreparacionDeEvento pe ON eep.codEvento = pe.codEvento
+        JOIN Evento ev ON pe.codEvento = ev.cod
+        WHERE ev.fechaIni <= NOW();
+      `);
+
+
+      // Material de inventario se actualiza y ejecuta
+      const [materials] = await pool.query(`
+        UPDATE MaterialEnInventario mi
+        JOIN MaterialInventarioEventoPreparado miep ON mi.cod = miep.codMaterial
+        JOIN PreparacionDeEvento pe ON miep.codEvento = pe.codEvento
+        JOIN Evento ev ON pe.codEvento = ev.cod
+        SET mi.estado = 'enUso'
+        WHERE ev.fechaIni <= NOW() AND mi.estado = 'reservado';
+      `);
+      console.log(`[CRON] Materiales de inventario actualizados: ${materials.affectedRows}`);
+
+      // Insertar en MaterialInventarioEventoEjecutado
+      await pool.query(`
+        INSERT INTO MaterialInventarioEventoEjecutado (codMaterial, codEvento, precio, fechaIni, fechaFin)
+        SELECT miep.codMaterial, miep.codEvento, miep.precio, ev.fechaIni, ev.fechaFin
+        FROM MaterialInventarioEventoPreparado miep
+        JOIN PreparacionDeEvento pe ON miep.codEvento = pe.codEvento
+        JOIN Evento ev ON pe.codEvento = ev.cod
+        WHERE ev.fechaIni <= NOW();
+      `);
+      
+      return { updated: events.length };
     } catch (error) {
       console.error("[CRON ERROR]", error);
     }

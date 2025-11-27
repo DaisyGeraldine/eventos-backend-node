@@ -335,6 +335,25 @@ const staffController = {
     }
   },
 
+  // POST /empleados/$dni/eventos/proximos
+  getUpcomingEventsForEmployee: async (req, res) => {
+    try {
+      const dni = req.params.dni;
+      const events = await Staff.findUpcomingEventsForEmployee(dni);
+      return res.status(200).json({
+        status: true,
+        message: "Eventos próximos obtenidos exitosamente",
+        data: events,
+      });
+    } catch (error) {
+      console.error("Error fetching upcoming events for employee:", error);
+      return res.status(500).json({
+        status: false,
+        message: "Error interno del servidor",
+      });
+    }
+  }
+
 };
 
 module.exports = staffController;
