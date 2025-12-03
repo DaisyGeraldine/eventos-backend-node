@@ -79,6 +79,58 @@ const eventsController = {
       });
     }
   },
+
+  // PUT /events/:cod/presupuesto-final - Actualizar presupuesto final
+  updateFinalBudget: async (req, res) => {
+    const { cod } = req.params;
+    const { presupuestoModificado } = req.body;
+    try {
+      if (presupuestoModificado == null || presupuestoModificado < 0) {
+      return res.status(400).json({
+          status: false,
+          message: 'Presupuesto inválido',
+          errorCode: 'INVALID_BUDGET'
+        });
+      }
+      const updateEvent = await Event.updateFinalBudget(cod, presupuestoModificado);
+      if (updateEvent === 0) {
+        return res.status(400).json({
+          status: false,
+          message: "Evento no encontrado",
+          errorCode: "EVENT_NOT_IN_EXECUTION"
+        });
+      }
+
+      if (updateEvent === 1) {
+        return res.status(400).json({
+          status: false,
+          message: "Evento no está en ejecución",
+          errorCode: "EVENT_NOT_IN_EXECUTION"
+        });
+      }
+
+      if (updateEvent === 2) {
+        return res.status(400).json({
+          status: false,
+          message: "No se puede actualizar el presupuesto",
+          errorCode: "BUDGET_ALREADY_FINALIZED"
+        });
+      }
+
+      res.status(200).json({
+        status: true,
+        message: "Presupuesto final actualizado exitosamente",
+        data: updateEvent,
+      });
+    } catch (error) {
+      console.error("Error actualizando presupuesto final:", error);
+      res.status(500).json({
+        status: false,
+        message: "Error interno del servidor",
+      });
+    }
+  },
+
 };
 
 module.exports = eventsController;

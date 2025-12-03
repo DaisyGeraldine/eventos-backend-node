@@ -298,7 +298,45 @@ const Event = {
     } catch (error) {
       console.error("[CRON ERROR]", error);
     }
-  },  
+  },
+
+  updateFinalBudget: async (codEvento, presupuestoFinal) => {
+    // Verificar si el evento existe
+    const [eventoExistente] = await pool.query(
+      `SELECT * FROM Evento WHERE cod = ?`,
+      [codEvento]
+    );
+
+    if (eventoExistente.length === 0) {
+      return 0; // Evento no encontrado
+    }
+
+    // Verificar que el evento esté en ejecución
+    const [evento] = await pool.query(
+      `SELECT * FROM EjecucionEvento WHERE codEvento = ?`,
+      [codEvento]
+    );
+
+    if (evento.length === 0) {
+      return 1; // Evento no encontrado o no en ejecución
+    }
+
+     // Actualizar presupuesto final en EjecucionDeEvento o tabla correspondiente
+    const [rows] = await pool.query(
+      `UPDATE EjecucionEvento SET presupuestoModificado = ? WHERE codEvento = ?`,
+      [presupuestoFinal, codEvento]
+    );
+    if (rows.affectedRows === 0) {
+      return 2; // No se pudo actualizar
+    }
+    // devolver registro actualizado
+    const [updatedEvent] = await pool.query(
+      `SELECT * FROM EjecucionEvento WHERE codEvento = ?`,
+      [codEvento]
+    );
+    return updatedEvent[0];
+  }
+  
 };
 
 // 🔧 Función para formatear fechas al formato que MySQL entiende (YYYY-MM-DD HH:MM:SS)
