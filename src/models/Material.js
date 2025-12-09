@@ -53,6 +53,53 @@ const Material = {
   },
 
   updateMaterial: async (cod, descripcion, fechaIni, fechaFin, precio) => {
+    //Consultar si el precio enviado es diferente al actual
+    const [currentRows] = await pool.query(
+      `SELECT precio FROM Material WHERE cod = ?`,
+      [cod]
+    );
+
+    if (currentRows.length > 0 && currentRows[0].precio !== precio) {
+      console.log("El precio ha cambiado. Actualizando registros relacionados...");
+      
+      // Verificar si existen registros relacionados
+      const [relatedRecords] = await pool.query(
+        `SELECT DISTINCT miee.codEvento 
+        FROM MaterialInventarioEventoEjecutado miee
+        INNER JOIN EjecucionEvento ee ON miee.codEvento = ee.codEvento
+        WHERE miee.codMaterial = ?`,
+        [cod]
+      );
+
+      if (relatedRecords.length > 0) {
+        const diferencia = Math.abs(precio - currentRows[0].precio);
+        
+        if (currentRows[0].precio < precio) {
+          // El precio aumentó, sumar la diferencia
+          await pool.query(
+            `UPDATE EjecucionEvento ee
+            INNER JOIN MaterialInventarioEventoEjecutado miee ON ee.codEvento = miee.codEvento
+            SET ee.presupuestoModificado = ee.presupuestoModificado + ?
+            WHERE miee.codMaterial = ?`,
+            [diferencia, cod]
+          );
+          console.log(`Presupuesto incrementado en ${diferencia}`);
+        } else if (currentRows[0].precio > precio) {
+          // El precio disminuyó, restar la diferencia
+          await pool.query(
+            `UPDATE EjecucionEvento ee
+            INNER JOIN MaterialInventarioEventoEjecutado miee ON ee.codEvento = miee.codEvento
+            SET ee.presupuestoModificado = ee.presupuestoModificado - ?
+            WHERE miee.codMaterial = ?`,
+            [diferencia, cod]
+          );
+          console.log(`Presupuesto reducido en ${diferencia}`);
+        }
+      } else {
+        console.log("No hay eventos relacionados para actualizar");
+      }
+    }
+
     const [result] = await pool.query(
       `UPDATE Material SET descripcion = ?, fechaIni = ?, fechaFin = ?, precio = ? WHERE cod = ?`,
       [descripcion, fechaIni, fechaFin, precio, cod]
@@ -60,7 +107,7 @@ const Material = {
 
     if (result.affectedRows === 0) {
         return null;
-    }
+    } 
     const [rows] = await pool.query(
       `SELECT * FROM Material WHERE cod = ?`,
       [cod]
