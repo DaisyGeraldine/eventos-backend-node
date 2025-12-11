@@ -224,8 +224,16 @@ const Event = {
         `, [event.codEvento]);
 
         await pool.query(`
-          INSERT IGNORE INTO EjecucionEvento (codEvento, fechaIni)
-          VALUES (?, NOW());
+          INSERT IGNORE INTO EjecucionEvento (codEvento, fechaIni, fechaFin, coste, presupuestoModificado)
+          SELECT 
+            pe.codEvento,
+            NOW() AS fechaIni,
+            e.fechaFin,
+            pe.presupuesto AS coste,
+            pe.presupuesto AS presupuestoModificado
+          FROM PreparacionDeEvento pe
+          INNER JOIN Evento e ON pe.codEvento = e.cod
+          WHERE pe.codEvento = ?;
         `, [event.codEvento]);
       }
       console.log(`[CRON] Eventos procesados: ${events.length}`);
