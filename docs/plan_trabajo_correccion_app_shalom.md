@@ -47,7 +47,11 @@
 ### Tarea 0.2: Línea base de KPIs
 - **Objetivo:** Establecer punto de partida medible.
 - **Actividades:**
-  - Medir éxito de login/registro, éxito de rastreo, p95 de rastreo, entrega OTP < 60s, crash/ANR por versión.
+  - Medir éxito de login/registro.
+  - Medir éxito de rastreo.
+  - Medir tiempo p95 de rastreo.
+  - Medir entrega OTP < 60s.
+  - Medir tasa de crash/ANR por versión.
 - **Entregables:**
   - Documento baseline con métricas iniciales.
 - **Criterios de aceptación:**
