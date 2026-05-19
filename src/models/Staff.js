@@ -221,31 +221,54 @@ const Staff = {
 
   deleteCompleteEmployee: async (dni) => {
     const connection = await pool.getConnection();
+
     try {
       await connection.beginTransaction();
 
-      // Delete from Empleado
+      // Relaciones
       await connection.query(
+        `DELETE FROM EmpleadoEventoPreparado WHERE dni = ?`,
+        [dni]
+      );
+
+      await connection.query(
+        `DELETE FROM EmpleadoEventoEjecutado WHERE dni = ?`,
+        [dni]
+      );
+
+      // Empleado
+      const [employeeResult] = await connection.query(
         `DELETE FROM Empleado WHERE dni = ?`,
         [dni]
       );
 
-      // Delete from Persona
-      const [result] = await connection.query(
-        `DELETE FROM Persona WHERE dni = ?`,
-        [dni]
-      );
-
-      if (result.affectedRows === 0) {
+      if (employeeResult.affectedRows === 0) {
         await connection.rollback();
         return null;
       }
+
+      // Verificar si todavía existe como usuario
+      const [userRows] = await connection.query(
+        `SELECT dni FROM Usuario WHERE dni = ?`,
+        [dni]
+      );
+
+      // SOLO eliminar Persona si no existe Usuario
+      if (userRows.length === 0) {
+        await connection.query(
+          `DELETE FROM Persona WHERE dni = ?`,
+          [dni]
+        );
+      }
+
       await connection.commit();
-      return result.affectedRows > 0;
+      return true;
+
     } catch (error) {
       await connection.rollback();
       console.error('Error al eliminar empleado:', error);
       return false;
+
     } finally {
       connection.release();
     }
